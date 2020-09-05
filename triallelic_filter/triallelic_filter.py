@@ -32,8 +32,13 @@ import sys
 import gzip
 
 class Variant:
-    def __init__(self):
-        pass
+    __slots__ = ('chrom', 'pos', 'id', 'ref', 'alt', 'qual', 'filter',
+        'info', 'samples', 'end', 'line')
+    def __init__(self, *args):
+        for k,v in zip(self.__slots__, args):
+            setattr(self, k, v)
+    def __str__(self):
+        return self.line
         
         
 def insert_by_QUAL(l, n):
