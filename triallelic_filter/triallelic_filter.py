@@ -53,7 +53,7 @@ def triallelic_filter(block, args):
     if args.mode == 1:
         output = block[:args.N]
     else:
-        thresh = block[0].qual * (100 - args.N) / 100
+        thresh = block[0].qual * args.N / 100
         for i in range(len(block)):
             if block[i].qual < thresh:
                 break
@@ -77,8 +77,8 @@ def process_args():
                         help='Input VCF file name, required', required=True)
     parser.add_argument('-m', '--mode', metavar='MODE',
                         help='1) Keep top N variants. '
-                        '2) Keep variants in top N%%. '
-                        'Default: 1', type=int, default=1)
+                        '2) Keep variants with QUAL higher than the N%% '
+                        'of the highest. Default: 1', type=int, default=1)
     parser.add_argument('-N', metavar='Parameter',
                         help='See --mode for more information. '
                         'Default: 1', type=int, default=1)
