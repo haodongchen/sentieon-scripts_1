@@ -24,61 +24,78 @@ Copyright (c) Sentieon Inc. All rights reserved.
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 '''
-
-from __future__ import print_function
-
 import argparse
 import sys
 import gzip
+from operator import attrgetter
+
 
 class Variant:
     __slots__ = ('chrom', 'pos', 'id', 'ref', 'alt', 'qual', 'filter',
-        'info', 'samples', 'end', 'line')
-    def __init__(self, *args):
-        for k,v in zip(self.__slots__, args):
+                 'info', 'samples', 'line')
+
+    def __init__(self, line):
+        vals = line.rstrip().split('\t')
+        if len(vals) < 10:
+            raise ValueError('Variant has less than 10 columns.')
+        vals[1] = int(vals[1])-1
+        vals[4] = vals[4].split(',') if vals[4] != '.' else []
+        vals[5] = float(vals[5]) if vals[5] != '.' else None
+        vals[6] = vals[6].split(';') if vals[6] != '.' else []
+        # Process INFO
+        infoline = vals[7].split(";")
+        vals[7] = {}
+        for infoelem in infoline:
+            if "=" not in infoelem:
+                # Type=Flag
+                infoelem += "=True"
+            infoelem = infoelem.split("=")
+            vals[7][infoelem[0]] = infoelem[1]
+        fmts = vals[8].split(':')
+        samples = []
+        # Process FORMAT
+        for val in vals[9:]:
+            s = dict(zip(fmts, val.split(':')))
+            samples.append(s)
+        vals = vals[:8]
+        vals.append(samples)
+        vals.append(line.rstrip())
+        for k, v in zip(self.__slots__, vals):
             setattr(self, k, v)
+
     def __str__(self):
         return self.line
-        
-        
-def insert_by_QUAL(l, n):
-    if len(l) == 0:
-        return [n]
-    nqual = float(n.split("\t")[5])
-    lqual = [float(x.split("\t")[5]) for x in l]
-    for i in range(len(l)):
-        if lqual[i] < nqual:
-            break
-    else:
-        i = len(l)
-    # Inserting n in the list
-    result = l[:i] + [n] + l[i:]
-    return result
+
+    def __repr__(self):
+        return self.line
+
+    @property
+    def alt_count(self):
+        return int(self.samples[0]['AD'].split(",")[1])
 
 
 def triallelic_filter(block, args):
+    block.sort(reverse=True, key=attrgetter("qual", "alt_count"))
     output = []
     if args.mode == 1:
-        args.N = 1
-    if args.mode == 1 or args.mode == 2:
         output = block[:args.N]
     else:
-        thresh = float(block[0].split("\t")[5]) * (100 - args.N) / 100
+        thresh = block[0].qual * (100 - args.N) / 100
         for i in range(len(block)):
-            if float(block[i].split("\t")[5]) < thresh:
+            if block[i].qual < thresh:
                 break
         else:
             i = len(block)
         output = block[:i]
-    for line in output:
-        cols = line.split("\t")
+    for var in output:
+        cols = var.line.split("\t")
         filter_col = cols[6].split(";")
         filter_col.remove("triallelic_site")
         if len(filter_col) == 0:
             cols[6] = "PASS"
         else:
             cols[6] = ";".join(filter_col)
-        print("\t".join(cols), end="")
+        print("\t".join(cols), end="\n")
 
 
 def main():
@@ -86,12 +103,12 @@ def main():
     parser.add_argument('-i', '--input', metavar='VCF',
                         help='Input VCF file name, required', required=True)
     parser.add_argument('-m', '--mode', metavar='MODE',
-                        help='1) Keep the highest QUAL variant. '
-                        '2) Keep top N variants. '
-                        '3) Keep variants in top N%%. '
+                        help='1) Keep top N variants. '
+                        '2) Keep variants in top N%%. '
                         'Default: 1', type=int, default=1)
     parser.add_argument('-N', metavar='Parameter',
-                        help='See --mode for more information', type=int)
+                        help='See --mode for more information. '
+                        'Default: 1', type=int, default=1)
     parser.add_argument('--ignore_non_pass',
                         help='Ignore and remove non-pass triallelic sites.',
                         action='store_true')
@@ -102,27 +119,27 @@ def main():
         VCFfile = open(args.input)
     block = []
     chrom = ""
-    pos = ""
+    pos = 0
     for line in VCFfile:
         if line.startswith("#"):
             print(line, end="")
         else:
-            cols = line.split("\t")
-            if "triallelic_site" in cols[6].split(";"):
-                if args.ignore_non_pass and cols[6] != "triallelic_site":
+            var = Variant(line)
+            if "triallelic_site" in var.filter:
+                if args.ignore_non_pass and len(var.filter) > 1:
                     continue
                 if block:
-                    if cols[0] != chrom or int(cols[1]) != pos:
+                    if var.chrom != chrom or var.pos != pos:
                         triallelic_filter(block, args)
-                        block = [line]
-                        chrom = cols[0]
-                        pos = int(cols[1])
+                        block = [Variant(line)]
+                        chrom = var.chrom
+                        pos = var.pos
                     else:
-                        block = insert_by_QUAL(block, line)
+                        block.append(Variant(line))
                 else:
-                    chrom = cols[0]
-                    pos = int(cols[1])
-                    block = [line]
+                    chrom = var.chrom
+                    pos = var.pos
+                    block = [Variant(line)]
             else:
                 if block:
                     triallelic_filter(block, args)
