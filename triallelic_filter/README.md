@@ -12,7 +12,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -i VCF, --input VCF   Input VCF file name, required
   -m MODE, --mode MODE  1) Keep top N variants. 2) Keep variants with QUAL
-                        higher than the N% of the highest. Default: 1
+                        higher than N% of the highest. Default: 1
   -N Parameter          See --mode for more information. Default: 1
   --ignore_non_pass     Ignore and remove non-pass triallelic sites.
 ```
@@ -46,13 +46,13 @@ $ python triallelic_filter.py -i input.vcf --ignore_non_pass
 ```
 
 ### Mode 2 (Keep the top N% triallelic site ranked by QUAL and AD) ###
-Keep sites with QUAL higher than the 80% of the highest.
+Keep sites with QUAL higher than 80% of the highest.
 ```
 $ python triallelic_filter.py -i input.vcf -m 2 -N 80
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Tumor Normal
 22	19679446	.	C	CAAA	5000	germline_risk	.	GT:AD	0/1:7,23	0/0:12,0
 ```
-Keep the top 1/5 (20%) triallelic sites but ignore sites with FILTER other than `triallelic_site`.
+Keep sites with QUAL higher than 20% of the highest but ignore sites with FILTER other than `triallelic_site`.
 ```
 $ python triallelic_filter.py -i input.vcf -m 2 -N 20 --ignore_non_pass
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Tumor Normal
