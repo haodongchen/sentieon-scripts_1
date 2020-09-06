@@ -28,50 +28,23 @@ import argparse
 import sys
 import gzip
 from operator import attrgetter
+from Variant import Variant
 
 
-class Variant:
-    __slots__ = ('chrom', 'pos', 'id', 'ref', 'alt', 'qual', 'filter',
-                 'info', 'samples', 'line')
-
+class Variant(Variant):
     def __init__(self, line):
-        vals = line.rstrip().split('\t')
-        if len(vals) < 10:
-            raise ValueError('Variant has less than 10 columns.')
-        vals[1] = int(vals[1])-1
-        vals[4] = vals[4].split(',') if vals[4] != '.' else []
-        vals[5] = float(vals[5]) if vals[5] != '.' else None
-        vals[6] = vals[6].split(';') if vals[6] != '.' else []
-        # Process INFO
-        infoline = vals[7].split(";")
-        vals[7] = {}
-        for infoelem in infoline:
-            if "=" not in infoelem:
-                # Type=Flag
-                infoelem += "=True"
-            infoelem = infoelem.split("=")
-            vals[7][infoelem[0]] = infoelem[1]
-        fmts = vals[8].split(':')
-        samples = []
-        # Process FORMAT
-        for val in vals[9:]:
-            s = dict(zip(fmts, val.split(':')))
-            samples.append(s)
-        vals = vals[:8]
-        vals.append(samples)
-        vals.append(line.rstrip())
-        for k, v in zip(self.__slots__, vals):
-            setattr(self, k, v)
-
-    def __str__(self):
-        return self.line
-
-    def __repr__(self):
-        return self.line
+        cols = line.split("\t")
+        if len(cols) <= 10:
+            raise IndexError('Variant has less than 10 columns.')
+        super().__init__(line)
 
     @property
     def alt_count(self):
-        return int(self.samples[0]['AD'].split(",")[1])
+        try:
+            alt = int(self.samples[0]['AD'].split(",")[1])
+        except KeyError:
+            alt = 0
+        return alt
 
 
 def triallelic_filter(block, args):
@@ -98,7 +71,7 @@ def triallelic_filter(block, args):
         print("\t".join(cols), end="\n")
 
 
-def main():
+def process_args():
     parser = argparse.ArgumentParser(description='Process triallelic sites.')
     parser.add_argument('-i', '--input', metavar='VCF',
                         help='Input VCF file name, required', required=True)
@@ -112,7 +85,11 @@ def main():
     parser.add_argument('--ignore_non_pass',
                         help='Ignore and remove non-pass triallelic sites.',
                         action='store_true')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = process_args()
     if args.input.endswith("gz"):
         VCFfile = gzip.open(args.input, 'rt')
     else:
