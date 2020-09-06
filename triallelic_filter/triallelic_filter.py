@@ -77,7 +77,7 @@ def process_args():
                         help='Input VCF file name, required', required=True)
     parser.add_argument('-m', '--mode', metavar='MODE',
                         help='1) Keep top N variants. '
-                        '2) Keep variants with QUAL higher than the N%% '
+                        '2) Keep variants with QUAL higher than N%% '
                         'of the highest. Default: 1', type=int, default=1)
     parser.add_argument('-N', metavar='Parameter',
                         help='See --mode for more information. '
