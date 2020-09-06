@@ -24,7 +24,7 @@ Input:
 22	19679446	.	C	CAA	1013	triallelic_site	.	GT:AD	0/1:2,6	0/0:8,1
 22	19679446	.	C	CAAA	5000	triallelic_site;germline_risk	.	GT:AD	0/1:7,23	0/0:12,0
 ```
-### Mode 1 (Keep the top triallelic site ranked by QUAL and AD. Default) ###
+### Mode 1 (Keep the top N triallelic site ranked by QUAL and AD. Default) ###
 Keep the top one triallelic site.
 ```
 $ python triallelic_filter.py -i input.vcf
@@ -45,3 +45,10 @@ $ python triallelic_filter.py -i input.vcf --ignore_non_pass
 22	19679446	.	C	CAA	1013	PASS	.	GT:AD	0/1:2,6	0/0:8,1
 ```
 
+### Mode 2 (Keep the top N% triallelic site ranked by QUAL and AD) ###
+Keep the top 1/3 (33%) triallelic sites.
+```
+$ python triallelic_filter.py -i input.vcf -m 2 -N 33
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Tumor Normal
+22	19679446	.	C	CAAA	5000	germline_risk	.	GT:AD	0/1:7,23	0/0:12,0
+```
